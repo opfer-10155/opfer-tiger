@@ -1,0 +1,3 @@
+let
+  var N := 8
+  type intArray = [int]

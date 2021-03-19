@@ -1,0 +1,4 @@
+(tests
+  (libraries syntax core ounit2 str)
+  (names lexerTest parseTest)
+)
