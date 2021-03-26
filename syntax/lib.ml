@@ -1,4 +1,4 @@
-open Lexer
+open Parser
 
 (* convert tokens buffer to tokens list *)
 let rec buf_to_list buf =
@@ -14,3 +14,9 @@ let lex_from_string str =
 
 
 let show_token_list (toks : token list) = String.concat ", " (List.map Lexer.show_token toks)
+
+
+let parse_from_string str =
+  let lexbuf = Lexing.from_string str in
+  Parser.program Lexer.token lexbuf
+
