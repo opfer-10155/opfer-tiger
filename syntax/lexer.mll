@@ -5,7 +5,7 @@
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let id = alpha+ (alpha | digit | '_')*
-let num = ['1'-'9'] digit*
+let num = '0' | ['1'-'9'] digit*
 let ws = ['\t' ' ' '\n']
 
 rule token = parse
@@ -27,7 +27,8 @@ rule token = parse
   | "var"     { VAR }
   | "function" { FUNCTION }
   | "type"    { TYPE }
-  | ":="      { COLONEQ }
+  | "of"      { OF }
+  (* | ":="      { COLONEQ } *)
   | "["       { LBRACKET }
   | "]"       { RBRACKET }
   | "+"       { PLUS }
@@ -51,10 +52,11 @@ rule token = parse
   | ":"       { COLON }
   | ";"       { SEMICOLON }
   | '.'       { DOT }
+  | "record"  { RECORD }
   | eof       { EOF }
   | id as i   { ID (i) }
+  (* | "/*" *)
 
 and string buf = parse
   | '"'       { STR (Buffer.contents buf) }
   | _ as s { Buffer.add_char buf s; string buf lexbuf }
-
