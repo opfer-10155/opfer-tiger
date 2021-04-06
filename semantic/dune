@@ -1,0 +1,6 @@
+(library
+  (name semantic)
+  (libraries core)
+  (preprocess
+    (staged_pps ppx_deriving.show ppx_deriving.eq ppx_import)))
+

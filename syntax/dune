@@ -1,8 +1,9 @@
 (library
   (name syntax)
-  (libraries core)
+  (libraries core semantic)
   (preprocess
-    (staged_pps ppx_deriving.show ppx_deriving.eq ppx_import)))
+    (staged_pps ppx_deriving.show ppx_deriving.eq ppx_import))
+  (flags (:standard -warn-error -a)))
 
 (ocamllex lexer)
 

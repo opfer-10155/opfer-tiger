@@ -53,6 +53,7 @@ rule token = parse
   | ";"       { SEMICOLON }
   | '.'       { DOT }
   | "record"  { RECORD }
+  | "and"     { AND }
   | eof       { EOF }
   | id as i   { ID (i) }
   (* | "/*" *)
