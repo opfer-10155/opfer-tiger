@@ -14,13 +14,18 @@ let read_file file =
   close_in ic;
   s
 
-let x = VarExp{var=SimpleVar{id="x"; pos=dummy_pos}; pos=dummy_pos}
-let y = VarExp{var=SimpleVar{id="y"; pos=dummy_pos}; pos=dummy_pos}
-let z = VarExp{var=SimpleVar{id="z"; pos=dummy_pos}; pos=dummy_pos}
+let sym_x = ("x" , 1)
+let sym_y = ("y" , 1)
+let sym_z = ("z" , 1)
+let sym_f = ("f" , 1)
+
+let x = VarExp{var=SimpleVar{id=sym_x; pos=dummy_pos}; pos=dummy_pos}
+let y = VarExp{var=SimpleVar{id=sym_y; pos=dummy_pos}; pos=dummy_pos}
+let z = VarExp{var=SimpleVar{id=sym_z; pos=dummy_pos}; pos=dummy_pos}
 let binOp op x y = OpExp{op=op; l=x; r=y; pos=dummy_pos}
 let int0 = IntExp{i=0; pos=dummy_pos}
 let int1 = IntExp{i=1; pos=dummy_pos}
-let varx = SimpleVar{id="x"; pos=dummy_pos}
+let varx = SimpleVar{id=sym_x; pos=dummy_pos}
 let negative1 = binOp MinusOp int0 int1
 
 let simple_test =
@@ -28,13 +33,13 @@ let simple_test =
 >::: [
   test_parser "variable" (x) "x";
   test_parser "(exp)" (x) "(x)";
-  test_parser "application" (CallExp{id="func"; args=[x; y]; pos=dummy_pos }) "func(x, y)";
+  test_parser "application" (CallExp{id=sym_f; args=[x; y]; pos=dummy_pos }) "func(x, y)";
   test_parser "bin_op" (binOp PlusOp int1 x) "1 + x";
   test_parser "unary" negative1 "-1";
   test_parser "if-else" (IfExp{c=x; t1=y; t2=Some z; pos=dummy_pos}) "if x then y else z";
   test_parser "if-then" (IfExp{c=x; t1=y; t2=None; pos=dummy_pos}) "if x then y";
   test_parser "while" (WhileExp{c=x; body=x; pos=dummy_pos}) "while x do x";
-  test_parser "for" (ForExp{id="x"; low=int0; high=int1; body=x; pos=dummy_pos}) "for x = 0 to 1 do x";
+  test_parser "for" (ForExp{id=sym_f; low=int0; high=int1; body=x; pos=dummy_pos}) "for x = 0 to 1 do x";
   test_parser "break" (BreakExp{pos=dummy_pos}) "break";
   test_parser "sequence" (SeqExp{l=x; r=y}) "x; y";
   test_parser "let" (LetExp{

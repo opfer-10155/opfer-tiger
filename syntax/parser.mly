@@ -1,6 +1,8 @@
 %{
   open Semantic.Ast
   open Semantic.Position
+  open Semantic.Symbol
+  (* toSymbol は重複して作らないのでここでimportする必要はなかった *)
 %}
 
 %token <int> INT
@@ -48,7 +50,7 @@ exp:
   | v=value                                           { v }
   | v=left_value                                      { VarExp { var=v; pos=to_pos($startpos) } } // 変数
   | LPAREN e=exp RPAREN                               { e } // 括弧で閉じる
-  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=s; args=es; pos=to_pos($startpos) } } // 関数適用
+  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=toSymbol s; args=es; pos=to_pos($startpos) } } // 関数適用
   | e=bin_op_exp                                      { e }  // 二項演算
   // | exp bin_op exp                                 {}  // 二項演算
   | v = left_value COLONEQ e = exp                    { AssignExp { var = v; e = e; pos = to_pos($startpos)} }
@@ -56,7 +58,7 @@ exp:
   | IF e1=exp THEN e2=exp ELSE e3=exp                 { IfExp { c=e1; t1=e2; t2=(Some e3); pos=to_pos($startpos)} }
   | IF e1=exp THEN e2=exp                             { IfExp { c=e1; t1=e2; t2=None; pos=to_pos($startpos)} } // if
   | WHILE e1=exp DO e2=exp                            { WhileExp { c=e1; body=e2; pos=to_pos($startpos) } } // while 1 do ...
-  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=s; low=e1; high=e2; body=body; pos=to_pos($startpos) } } // for x = 1 to 10 do ...
+  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=toSymbol s; low=e1; high=e2; body=body; pos=to_pos($startpos) } } // for x = 1 to 10 do ...
   | BREAK                                             { BreakExp { pos=to_pos($startpos) } } // break
   | e1=exp SEMICOLON e2=exp                           { SeqExp { l=e1; r=e2; } }// a = 10; a + 1
   | LET ds=decs IN e=exp END                          { LetExp { decs=ds; body=e; pos=to_pos($startpos) } } // let var x = 1 in ... end
@@ -74,7 +76,7 @@ fields:
   | fs=separated_list(COMMA, field) { fs }
 
 field:
-  | s=ID EQ e=exp { Field { id=s; e=e; pos=to_pos($startpos) } }
+  | s=ID EQ e=exp { Field { id=toSymbol s ; e=e; pos=to_pos($startpos) } }
 
 // 宣言
 decs:
@@ -89,18 +91,18 @@ var_dec:
 
 // 関数宣言
 func_dec:
-  | FUNCTION name=ID LPAREN params=type_fields RPAREN EQ body=exp                     { FunDec {id=name; params=params; rty=None;     body=body; pos=to_pos($startpos)} }
-  | FUNCTION name=ID LPAREN params=type_fields RPAREN COLON ty=type_exp EQ body=exp   { FunDec {id=name; params=params; rty=Some ty;  body=body; pos=to_pos($startpos)} }
+  | FUNCTION name=ID LPAREN params=type_fields RPAREN EQ body=exp                     { FunDec {id=toSymbol name; params=params; rty=None;     body=body; pos=to_pos($startpos)} }
+  | FUNCTION name=ID LPAREN params=type_fields RPAREN COLON ty=type_exp EQ body=exp   { FunDec {id=toSymbol name; params=params; rty=Some ty;  body=body; pos=to_pos($startpos)} }
 
 // 左辺値
 left_value:
-  | s=ID                                  { SimpleVar    { id=s; pos=to_pos($startpos) } }
-  | v=left_value DOT s=ID                 { FieldVar     { parent=v; id=s; pos=to_pos($startpos) } }
+  | s=ID                                  { SimpleVar    { id=toSymbol s; pos=to_pos($startpos) } }
+  | v=left_value DOT s=ID                 { FieldVar     { parent=v; id=toSymbol s; pos=to_pos($startpos) } }
   | v=left_value LBRACKET e=exp RBRACKET  { SubscriptVar { var=v; index=e; pos=to_pos($startpos) } }
 
 // 型表現
 type_exp:
-  | t=ID                                      { NameTy {id=t; pos=to_pos($startpos)} }
+  | t=ID                                      { NameTy {id=toSymbol t; pos=to_pos($startpos)} }
   | RECORD LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } } // record型
   | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }} //配列型
 
@@ -110,12 +112,12 @@ type_fields:
 
 // 属性
 type_field:
-  | s=ID COLON ty=type_exp { Param { id=s; ty=ty; pos=to_pos($startpos) } }
+  | s=ID COLON ty=type_exp { Param { id=toSymbol s; ty=ty; pos=to_pos($startpos) } }
 
 // 型の文法
 // 型宣言
 type_dec:
-  | TYPE s=ID EQ ty=type_exp { TypeDec { id=s; ty=ty; pos=to_pos($startpos)} }
+  | TYPE s=ID EQ ty=type_exp { TypeDec { id=toSymbol s; ty=ty; pos=to_pos($startpos)} }
 
 
 // 二項演算
