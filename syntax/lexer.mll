@@ -54,6 +54,7 @@ rule token = parse
   | '.'       { DOT }
   | "record"  { RECORD }
   | "and"     { AND }
+  | "array"   { ARRAY }
   | eof       { EOF }
   | id as i   { ID (i) }
   (* | "/*" *)

@@ -1,11 +1,14 @@
 open Position
+open Symbol
 
+(* 左辺値 *)
 type variable =
-  | SimpleVar    of { id:string ; pos:pos }
-  | FieldVar     of { parent:variable; id:string; pos:pos }
+  | SimpleVar    of { id:symbol ; pos:pos }
+  | FieldVar     of { parent:variable; id:symbol; pos:pos }
   | SubscriptVar of { var:variable; index:exp; pos: pos}
 [@@deriving show, eq]
 
+(* 二項演算 *)
 and bin_op =
   | PlusOp
   | MinusOp
@@ -21,38 +24,44 @@ and bin_op =
   | NeqOp
 [@@deriving show, eq]
 
-and param   = Param   of { id:string; ty:ty; pos:pos }
-and fundec  = FunDec  of { id:string; params:(param list); rty:ty option; body:exp; pos:pos }
-and typedec = TypeDec of { id:string; ty:ty; pos:pos }
-and field   = Field   of { id:string; e:exp; pos:pos }
+(* 引数パラメタ, レコードメンバー修飾子 *)
+and param   = Param   of { id:symbol; ty:ty; pos:pos }
+(* 関数宣言ヘッダ *)
+and fundec  = FunDec  of { id:symbol; params:(param list); rty:ty option; body:exp; pos:pos }
+(* 型宣言ヘッダ *)
+and typedec = TypeDec of { id:symbol; ty:ty; pos:pos }
+(* レコードフィールド代入子 *)
+and field   = Field   of { id:symbol; e:exp; pos:pos }
 
+(* let宣言 *)
 and dec =
   | FunDecs  of fundec list
-  | VarDec   of {var:variable; ty:ty option; e:exp; pos:pos}
+  | VarDec   of {id:symbol; ty:ty option; e:exp; pos:pos}
   | TypeDecs of typedec list
 [@@deriving show, eq]
 
-
+(* ASTノードとしての型 *)
 and ty =
   | RecordTy of {fields:param list; pos:pos}
   | ArrayTy  of {ty:ty; pos:pos}
-  | NameTy   of {id: string; pos:pos}
+  | NameTy   of {id: symbol; pos:pos}
 [@@deriving show, eq]
+
 
 and exp =
   | NilExp    of { pos:pos }
   | IntExp    of { i:int; pos:pos }
   | StrExp    of { s:string; pos:pos }
   | VarExp    of { var:variable; pos:pos }
-  | CallExp   of { id:string; args:(exp list); pos:pos }
+  | CallExp   of { id:symbol; args:(exp list); pos:pos }
   | OpExp     of { op:bin_op; l:exp; r:exp; pos:pos }
   | SeqExp    of { l:exp; r:exp; }
   | AssignExp of { var:variable; e:exp; pos:pos }
   | IfExp     of { c:exp; t1:exp; t2:(exp option); pos:pos }
   | WhileExp  of { c:exp; body:exp; pos:pos }
-  | ForExp    of { id:string; low:exp; high:exp; body:exp; pos:pos } (* bool ref *)
+  | ForExp    of { id:symbol; low:exp; high:exp; body:exp; pos:pos } (* bool ref *)
   | BreakExp  of { pos:pos }
-  | LetExp    of { decs:dec; body:exp; pos:pos}
+  | LetExp    of { decs:dec; body:exp; pos:pos }
   | ArrayExp  of { ty:ty; len:exp; init:exp; pos:pos }
   | RecordExp of { fields:field list; pos:pos }
 [@@deriving show, eq]

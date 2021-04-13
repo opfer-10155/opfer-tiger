@@ -22,12 +22,13 @@
 %token WHILE DO   // while do
 %token FOR TO     // for to
 %token BREAK    // break
-%token OF   // of
+%token ARRAY OF   // of
 %token LET IN END // let ... in ... end
 %token UMINUS  // unary ops
 %token RECORD // record
 %token AND // and
 
+%nonassoc COLONEQ
 %nonassoc DO THEN
 %nonassoc ELSE OF
 %nonassoc EQEQ NEQ
@@ -48,28 +49,54 @@ program:
 // 式
 exp:
   | v=value                                           { v }
-  | v=left_value                                      { VarExp { var=v; pos=to_pos($startpos) } } // 変数
-  | LPAREN e=exp RPAREN                               { e } // 括弧で閉じる
-  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=toSymbol s; args=es; pos=to_pos($startpos) } } // 関数適用
-  | e=bin_op_exp                                      { e }  // 二項演算
-  // | exp bin_op exp                                 {}  // 二項演算
+  | v=left_value                                      { VarExp { var=v; pos=to_pos($startpos) } }
+
+  // 括弧で閉じる
+  | LPAREN e=exp RPAREN                               { e }
+
+  // 関数適用
+  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=toSymbol s; args=es; pos=to_pos($startpos) } }
+
+  // 二項演算
+  | e=bin_op_exp                                      { e }
+
+  // 代入 v := e
   | v = left_value COLONEQ e = exp                    { AssignExp { var = v; e = e; pos = to_pos($startpos)} }
-  | MINUS e=exp %prec UMINUS                          { OpExp { op=MinusOp; l=IntExp {i=0; pos=dummy_pos}; r=e; pos=to_pos($startpos)} } // 単項マイナス
+
+  // 単項マイナス
+  | MINUS e=exp %prec UMINUS                          { OpExp { op=MinusOp; l=IntExp {i=0; pos=dummy_pos}; r=e; pos=to_pos($startpos)} }
+
+  // if then else
   | IF e1=exp THEN e2=exp ELSE e3=exp                 { IfExp { c=e1; t1=e2; t2=(Some e3); pos=to_pos($startpos)} }
-  | IF e1=exp THEN e2=exp                             { IfExp { c=e1; t1=e2; t2=None; pos=to_pos($startpos)} } // if
-  | WHILE e1=exp DO e2=exp                            { WhileExp { c=e1; body=e2; pos=to_pos($startpos) } } // while 1 do ...
-  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=toSymbol s; low=e1; high=e2; body=body; pos=to_pos($startpos) } } // for x = 1 to 10 do ...
-  | BREAK                                             { BreakExp { pos=to_pos($startpos) } } // break
+  // if then
+  | IF e1=exp THEN e2=exp                             { IfExp { c=e1; t1=e2; t2=None; pos=to_pos($startpos)} }
+
+  // while condition do ...
+  | WHILE e1=exp DO e2=exp                            { WhileExp { c=e1; body=e2; pos=to_pos($startpos) } }
+
+  // forループ for i = e1 to e2 do exp
+  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=toSymbol s; low=e1; high=e2; body=body; pos=to_pos($startpos) } }
+
+  | BREAK                                             { BreakExp { pos=to_pos($startpos) } }
+
+  // シークエンス
   | e1=exp SEMICOLON e2=exp                           { SeqExp { l=e1; r=e2; } }// a = 10; a + 1
+
+  // let式
   | LET ds=decs IN e=exp END                          { LetExp { decs=ds; body=e; pos=to_pos($startpos) } } // let var x = 1 in ... end
 
-// values
+
+
 value:
-  | i=INT                                             { IntExp { i=i; pos=to_pos($startpos) }  } // 数値
-  | s=STR                                             { StrExp { s=s; pos=to_pos($startpos) } } // 文字列値
-  | NIL                                               { NilExp { pos=to_pos($startpos) } } // NIL
-  | ty=type_exp LBRACKET len=exp RBRACKET OF e=exp    { ArrayExp { ty=ty; len=len; init=e; pos=to_pos($startpos) } } // int[8] of 0
-  | LBRACE fs=fields RBRACE                           { RecordExp { fields=fs; pos=to_pos($startpos) } } // {x : 10} record
+  // 数値
+  | i=INT                                             { IntExp { i=i; pos=to_pos($startpos) }  }
+  // 文字列値
+  | s=STR                                             { StrExp { s=s; pos=to_pos($startpos) } }
+  | NIL                                               { NilExp { pos=to_pos($startpos) } }
+  // 配列初期化  array int[8] of 0
+  | ARRAY ty=type_exp LBRACKET len=exp RBRACKET OF e=exp    { ArrayExp { ty=ty; len=len; init=e; pos=to_pos($startpos) } }
+  // レコード初期化 {x=10}
+  | LBRACE fs=fields RBRACE                           { RecordExp { fields=fs; pos=to_pos($startpos) } }
 
 // フィールド
 fields:
@@ -80,31 +107,42 @@ field:
 
 // 宣言
 decs:
+  // 変数宣言
   | d = var_dec                               { d }
+  // 相互再帰ありの関数宣言
   | fs=separated_nonempty_list(AND, func_dec) { FunDecs fs }
+  // 相互再帰ありの型宣言
   | ts=separated_nonempty_list(AND, type_dec) { TypeDecs ts }
+
 
 // 変数宣言
 var_dec:
-  | VAR v=left_value EQ e=exp                       { VarDec { var=v; ty=None; e=e; pos=to_pos($startpos) } }
-  | VAR v=left_value COLON ty=type_exp EQ e=exp     { VarDec { var=v; ty=(Some ty); e=e; pos=to_pos($startpos) } }
+  | VAR s=ID EQ e=exp                       { VarDec { id=toSymbol s; ty=None; e=e; pos=to_pos($startpos) } }
+  | VAR s=ID COLON ty=type_exp EQ e=exp     { VarDec { id=toSymbol s; ty=(Some ty); e=e; pos=to_pos($startpos) } }
 
-// 関数宣言
+// 関数宣言  返値型ありor返値型なし
 func_dec:
   | FUNCTION name=ID LPAREN params=type_fields RPAREN EQ body=exp                     { FunDec {id=toSymbol name; params=params; rty=None;     body=body; pos=to_pos($startpos)} }
   | FUNCTION name=ID LPAREN params=type_fields RPAREN COLON ty=type_exp EQ body=exp   { FunDec {id=toSymbol name; params=params; rty=Some ty;  body=body; pos=to_pos($startpos)} }
 
-// 左辺値
+// 左辺値もしくは変数参照
 left_value:
+  // x
   | s=ID                                  { SimpleVar    { id=toSymbol s; pos=to_pos($startpos) } }
+  // arr[1]
   | v=left_value DOT s=ID                 { FieldVar     { parent=v; id=toSymbol s; pos=to_pos($startpos) } }
+  // record.member
   | v=left_value LBRACKET e=exp RBRACKET  { SubscriptVar { var=v; index=e; pos=to_pos($startpos) } }
+
 
 // 型表現
 type_exp:
+  // 型名
   | t=ID                                      { NameTy {id=toSymbol t; pos=to_pos($startpos)} }
-  | RECORD LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } } // record型
-  | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }} //配列型
+  // record型 {x: int}
+  | RECORD LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } }
+  // 配列型 [int]
+  | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }}
 
 // 型フィールド
 type_fields:

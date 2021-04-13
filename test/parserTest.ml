@@ -43,7 +43,7 @@ let simple_test =
   test_parser "break" (BreakExp{pos=dummy_pos}) "break";
   test_parser "sequence" (SeqExp{l=x; r=y}) "x; y";
   test_parser "let" (LetExp{
-    decs=VarDec{var=varx; ty=None; e=int0; pos=dummy_pos};
+    decs=VarDec{id=sym_x; ty=None; e=int0; pos=dummy_pos};
     body=x;
     pos=dummy_pos
   }) "let var x = 0 in x end";
