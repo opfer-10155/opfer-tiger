@@ -17,6 +17,7 @@ type tyenv = ty SymTab.table  (* 型名 -> 型 *)
 
 type ctx = ty SymTab.table    (* 変数名 -> 型 *)
 
+
 let makeFunEntry name params result =
   (name, FunEntry { formals = params; result })
 
@@ -38,4 +39,3 @@ let base_ctx =
       let funty = FuncTy (formals, result) in
       SymTab.enter (toSymbol name) funty ctx)
     SymTab.empty standard_functions
-

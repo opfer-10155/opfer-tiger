@@ -14,3 +14,8 @@ let enter = Table.add
 
 let lookup = Table.find_opt
 (* lookup k t = try Some (Table.find k t) with Not_found -> None *)
+
+let enter_list li tab= List.fold_left
+  (fun tab (key , v) -> enter key v tab)
+  tab
+  li

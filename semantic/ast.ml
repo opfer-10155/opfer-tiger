@@ -25,13 +25,13 @@ and bin_op =
 [@@deriving show, eq]
 
 (* 引数パラメタ, レコードメンバー修飾子 *)
-and param   = Param   of { id:symbol; ty:ty; pos:pos }
+and param   = Param   of { id:symbol; ty:ty; pos:pos } [@@deriving show, eq]
 (* 関数宣言ヘッダ *)
-and fundec  = FunDec  of { id:symbol; params:(param list); rty:ty option; body:exp; pos:pos }
+and fundec  = FunDec  of { id:symbol; params:(param list); rty:ty option; body:exp; pos:pos } [@@deriving show, eq]
 (* 型宣言ヘッダ *)
-and typedec = TypeDec of { id:symbol; ty:ty; pos:pos }
+and typedec = TypeDec of { id:symbol; ty:ty; pos:pos } [@@deriving show, eq]
 (* レコードフィールド代入子 *)
-and field   = Field   of { id:symbol; e:exp; pos:pos }
+and field   = Field   of { id:symbol; e:exp; pos:pos } [@@deriving show, eq]
 
 (* let宣言 *)
 and dec =
@@ -65,6 +65,26 @@ and exp =
   | ArrayExp  of { ty:ty; len:exp; init:exp; pos:pos }
   | RecordExp of { fields:field list; pos:pos }
 [@@deriving show, eq]
+
+
+let rec exp_pos e =
+  match e with
+  | NilExp    {pos} -> pos
+  | IntExp    {pos;_} -> pos
+  | StrExp    {pos;_} -> pos
+  | VarExp    {pos;_} -> pos
+  | CallExp   {pos;_} -> pos
+  | OpExp     {pos;_} -> pos
+  | SeqExp    { l;_ } -> exp_pos l
+  | AssignExp {pos;_} -> pos
+  | IfExp     {pos;_} -> pos
+  | WhileExp  {pos;_} -> pos
+  | ForExp    {pos;_} -> pos
+  | BreakExp  {pos;_} -> pos
+  | LetExp    {pos;_} -> pos
+  | ArrayExp  {pos;_} -> pos
+  | RecordExp {pos;_} -> pos
+
 
 (* type exp_info = {
   exp : exp ;
