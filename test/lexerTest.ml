@@ -1,4 +1,4 @@
-
+(* 字句解析器のテスト *)
 open Syntax.Lib
 open Syntax.Lexer
 open OUnit2
