@@ -1,5 +1,3 @@
-open Location
-
 (*
  * Lexing bufferを受け取り、状況に応じたエラーメッセージを出力する
  * buf : Lexing.lexbuf ocamllexから生成されるlexing buffer
@@ -28,11 +26,9 @@ let gen_error_message (buf : Lexing.lexbuf) (proc : string) (error : string) =
   in
     message
 
-(* exception Error of (Location.location * string) *)
 exception Error of string
 
-let error (loc : Location.location) fmt =
-  (* Format.ksprintf (fun msg -> raise (Error (loc, msg))) fmt *)
+let error (loc : Lexing.position * Lexing.position) fmt =
   let (startp, endp) = loc in
   let lnum = startp.pos_lnum in
   let start_pos = startp.pos_cnum - startp.pos_bol + 1 in
@@ -53,13 +49,13 @@ let error (loc : Location.location) fmt =
 let fatal fmt =
   Format.ksprintf failwith fmt
 
-let illegal_character loc char =
-  error loc  "illegal character '%c'" char
+let illegal_character (lexbuf: Lexing.lexbuf) char =
+  error (lexbuf.lex_start_p, lexbuf.lex_curr_p)  "illegal character '%c'" char
 
-let unterminated_string loc =
-  error loc "unterminated string"
+let unterminated_string  (lexbuf: Lexing.lexbuf) =
+  error (lexbuf.lex_start_p, lexbuf.lex_curr_p) "unterminated string"
 
-let illegal_escape loc sequence =
-  error loc "illegal escape sequence: %s" sequence
+let illegal_escape  (lexbuf: Lexing.lexbuf) sequence =
+  error (lexbuf.lex_start_p, lexbuf.lex_curr_p) "illegal escape sequence: %s" sequence
 
 

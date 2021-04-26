@@ -75,7 +75,7 @@ rule token = parse
   | "array"   { ARRAY }
   | id as i   { ID (i) }
   | eof       { EOF }
-  | _ as s    {illegal_character (lexbuf.Lexing.lex_start_p, lexbuf.Lexing.lex_curr_p) s }
+  | _ as s    {illegal_character lexbuf s }
 
 (* コメント *)
 and comment = parse
