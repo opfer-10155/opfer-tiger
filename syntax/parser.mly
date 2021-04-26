@@ -25,16 +25,15 @@
 %token ARRAY OF   // array of
 %token LET IN END // let ... in ... end
 %token UMINUS     // unary ops
-%token RECORD     // record
 %token AND        // and
 
 %nonassoc COLONEQ
 %nonassoc DO THEN
 %nonassoc ELSE OF
-%nonassoc EQEQ NEQ
-%nonassoc GEQ LEQ LT GT
 %left SEMICOLON
 %left LOR LAND
+%nonassoc EQEQ NEQ
+%nonassoc GEQ LEQ LT GT
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left UMINUS
@@ -157,7 +156,7 @@ type_exp:
   // 型名
   | t=ID                                      { NameTy {id=toSymbol t; pos=to_pos($startpos)} }
   // record型 record {x: int}
-  | RECORD LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } }
+  | LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } }
   // 配列型 [int]
   | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }}
 

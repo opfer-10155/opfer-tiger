@@ -71,7 +71,6 @@ rule token = parse
   | ":"       { COLON }
   | ";"       { SEMICOLON }
   | '.'       { DOT }
-  | "record"  { RECORD }
   | "and"     { AND }
   | "array"   { ARRAY }
   | id as i   { ID (i) }
