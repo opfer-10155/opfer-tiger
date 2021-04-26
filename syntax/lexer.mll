@@ -1,5 +1,13 @@
 {
+  open Error
   type token = [%import: Parser.token] [@@deriving show, eq]
+
+  let append_char str ch =
+    str ^ (String.make 1 (Char.chr ch))
+
+  let str_incr_linenum str lexbuf =
+    String.iter (function '\n' -> Lexing.new_line lexbuf | _ -> ()) str
+
 }
 
 let digit = ['0'-'9']
@@ -58,10 +66,12 @@ rule token = parse
   | "record"  { RECORD }
   | "and"     { AND }
   | "array"   { ARRAY }
-  | eof       { EOF }
   | id as i   { ID (i) }
+  | eof       { EOF }
+  | _ as s    {illegal_character (lexbuf.Lexing.lex_start_p, lexbuf.Lexing.lex_curr_p) s }
   (* | "/*" *)
 
 and string buf = parse
   | '"'       { STR (Buffer.contents buf) }
   | _ as s { Buffer.add_char buf s; string buf lexbuf }
+  
