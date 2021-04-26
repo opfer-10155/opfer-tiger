@@ -7,9 +7,12 @@ let alpha = ['a'-'z' 'A'-'Z']
 let id = alpha+ (alpha | digit | '_')*
 let num = '0' | ['1'-'9'] digit*
 let ws = ['\t' ' ' '\n']
+let space = [' ' '\t']
+let newline = ['\n' '\r']
 
 rule token = parse
-  | ws+       { token lexbuf }
+  | space+    { token lexbuf }
+  | newline   { Lexing.new_line lexbuf; token lexbuf }
   | "nil"     { NIL }
   | num as n  { INT (int_of_string n) }
   | '"'       { string (Buffer.create 0) lexbuf }
@@ -28,7 +31,7 @@ rule token = parse
   | "function" { FUNCTION }
   | "type"    { TYPE }
   | "of"      { OF }
-  (* | ":="      { COLONEQ } *)
+  | ":="      { COLONEQ }
   | "["       { LBRACKET }
   | "]"       { RBRACKET }
   | "+"       { PLUS }
@@ -36,7 +39,7 @@ rule token = parse
   | "*"       { TIMES }
   | "/"       { DIVIDE }
   | "="       { EQ }
-  | "=="       { EQEQ }
+  | "=="      { EQEQ }
   | "!="      { NEQ }
   | "<"       { LT }
   | ">"       { GT }
