@@ -4,7 +4,8 @@ let
     var buffer = getchar()
 
     function readint(any: any) : int =
-        let var i = 0
+        let 
+            var i = 0
             function isdigit(s : string) : int = 
                 ord(buffer) >= ord("0") & ord(buffer) <= ord("9")
 
@@ -14,9 +15,10 @@ let
         in 
             skipto();
             any.any := isdigit(buffer);
-            while isdigit(buffer) do
-                (i := i * 10 + ord(buffer) - ord("0");
-                buffer := getchar());
+            while isdigit(buffer) do (
+                i := i * 10 + ord(buffer) - ord("0");
+                buffer := getchar()
+            );
             i
         end
 
@@ -24,11 +26,11 @@ let
 
     function readlist() : list =
         let 
-            var any = any{any=0}
+            var any : any = {any=0}
             var i = readint(any)
         in 
             if any.any
-            then list{ first=i, rest=readlist() }
+            then { first=i, rest=readlist() }
             else nil
         end
 
@@ -36,21 +38,23 @@ let
         if a == nil then b
         else if b == nil then a
         else if a.first < b.first 
-            then list{　first=a.first,　rest=merge(a.rest,b)　}
-            else list{　first=b.first,　rest=merge(a,b.rest)　}
+            then { first=a.first, rest=merge(a.rest,b) }
+            else { first=b.first, rest=merge(a,b.rest) }
 
     function printint(i: int) =
         let 
             function f(i:int) = 
-                if i>0 
+                if i > 0 
                 then (
                     f(i/10);
                     print( chr(i-i / 10*10 + ord("0")) )
                 )
         in 
-            if i<0 then (print("-"); f(-i))
-            else if i>0 then f(i)
-            else print("0")
+            if i < 0
+            then (print("-"); f(-i))
+            else if i > 0 
+                then f(i)
+                else print("0")
         end
 
     function printlist(l: list) =
@@ -63,7 +67,7 @@ let
         )
 
     var list1 = readlist()
-    var list2 = (buffer:=getchar(); readlist())
+    var list2 = (buffer := getchar(); readlist())
 
 
 /* BODY OF MAIN PROGRAM */
