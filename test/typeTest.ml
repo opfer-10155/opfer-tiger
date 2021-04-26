@@ -33,6 +33,8 @@ let test_type_from_literal name ty literal =
   name >:: fun _ -> assert_equal ty (tycheck base_tenv base_ctx (parse literal))
                     ~cmp:equal_type ~printer: show_ty
 
+
+(* ASTエイリアス *)
 let nil  = NilExp {pos=dummy_pos}
 let zero = IntExp {i=0; pos=dummy_pos}
 let one  = IntExp {i=1; pos=dummy_pos}
@@ -51,28 +53,18 @@ let x = VarExp {var=var_x; pos=dummy_pos}
 
 let call_printint = CallExp{id=sym_printint; args=[zero]; pos=dummy_pos}
 
-let int_ty = NameTy{id=sym_int; pos=dummy_pos}
-
+let int_ty  = NameTy{id=sym_int; pos=dummy_pos}
 let x_field = Field {id=sym_x; e=zero; pos=dummy_pos}
+let dec_x   = VarDec {id=sym_x; ty=None; e=zero; pos=dummy_pos}
 
-let dec_x = VarDec {id=sym_x; ty=None; e=zero; pos=dummy_pos}
 
-let test_table name expected id =
-  name >:: fun _ -> assert_equal expected (lookup id base_ctx)
-
-let table_test =
-  "table_test"
-  >:::[
-    test_table "unko" (Some (FuncTy([IntTy] , UnitTy))) sym_printint;
-    "unko" >:: fun _ -> assert_equal (Some IntTy) (lookup sym_x (enter sym_x IntTy base_ctx))
-  ]
-
+(* テスト *)
 let simple_test =
   "simple_test"
-  >:::[
+  >::: [
     test_type "Int"          IntTy                zero;
     test_type "String"       StrTy                str;
-    test_type "Nil"          (RecTy([] , ref()))  nil;
+    test_type "Nil"          NilTy                nil;
     test_type "printint(0)"  UnitTy               call_printint;
     test_type "0 + 0 : Int"  IntTy                (OpExp{op=PlusOp; l=zero; r=zero; pos=dummy_pos});
     test_type "'a'; 0 : Int" IntTy                (SeqExp{l=str; r=zero});
@@ -84,7 +76,13 @@ let simple_test =
     test_type "break : Unit" UnitTy               (BreakExp {pos=dummy_pos});
     test_type "[0]: Arr Int" (ArrTy(IntTy , ref())) (ArrayExp{ty=int_ty; len=one; init=zero; pos=dummy_pos});
     test_type "{x=0}:Record" (RecTy( [ (sym_x , IntTy) ], ref() )) (RecordExp {fields=[x_field]; pos=dummy_pos});
-    test_type "let x=0 in x" IntTy                (LetExp {decs=dec_x; body=x; pos=dummy_pos})
+    test_type "let x=0 in x" IntTy                (LetExp {decs=dec_x; body=x; pos=dummy_pos});
+    test_type_from_literal  "type anotation" IntTy
+      "let
+        function hoge() = printint(0)
+        type rec = {aa : {bb : int}}
+        var x = 0
+      in x end"
   ]
 
 (* let strict_test =
