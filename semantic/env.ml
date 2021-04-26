@@ -3,13 +3,29 @@ module SymTab = SymTable
 open Type
 
 type enventry =
-  | VarEntry of { ty : ty; const : bool }
-  | FunEntry of { formals : ty list; result : ty }
+  | VarEntry of {
+      ty : ty;
+      const : bool;
+      (* access: Trans.access *)
+    }
+  | FunEntry of {
+      formals : ty list; 
+      result : ty;
+      (* label: Temp.label;
+      level: Trans.level *)
+    }
 
 let standard_types = [ ("int", IntTy); ("string", StrTy) ]
 
 let standard_functions =
-  [ ("printint", [ IntTy ], UnitTy); ("exit", [ IntTy ], UnitTy) ]
+  [
+    ("printint", [ IntTy ], UnitTy);
+    ("exit", [ IntTy ], UnitTy);
+    ("getchar" , [], StrTy);
+    ("chr" , [IntTy] , StrTy);
+    ("ord" , [StrTy] , IntTy);
+    ("print" , [StrTy] , UnitTy)
+  ]
 
 type venv = enventry SymTab.table
 
