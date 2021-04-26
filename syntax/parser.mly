@@ -21,12 +21,12 @@
 %token IF THEN ELSE  // if else
 %token WHILE DO   // while do
 %token FOR TO     // for to
-%token BREAK    // break
-%token ARRAY OF   // of
+%token BREAK      // break
+%token ARRAY OF   // array of
 %token LET IN END // let ... in ... end
-%token UMINUS  // unary ops
-%token RECORD // record
-%token AND // and
+%token UMINUS     // unary ops
+%token RECORD     // record
+%token AND        // and
 
 %nonassoc COLONEQ
 %nonassoc DO THEN
@@ -83,7 +83,24 @@ exp:
   | e1=exp SEMICOLON e2=exp                           { SeqExp { l=e1; r=e2; } }// a = 10; a + 1
 
   // let式
-  | LET ds=decs IN e=exp END                          { LetExp { decs=ds; body=e; pos=to_pos($startpos) } } // let var x = 1 in ... end
+  // let
+  //     typedecs
+  //     funcdecs
+  //     vardec
+  //  in e end
+  // 上記のような式は
+  // let typedecs in
+  // let funcdecs in
+  // let vardec  in e end
+  // の糖衣構文とする
+  | LET ds=nonempty_list(decs) IN e=exp END
+  {
+    List.fold_right
+      (fun dec e -> LetExp{decs=dec; body=e; pos=to_pos($startpos)})
+      ds
+      e
+  }
+
 
 
 
@@ -139,7 +156,7 @@ left_value:
 type_exp:
   // 型名
   | t=ID                                      { NameTy {id=toSymbol t; pos=to_pos($startpos)} }
-  // record型 {x: int}
+  // record型 record {x: int}
   | RECORD LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } }
   // 配列型 [int]
   | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }}
