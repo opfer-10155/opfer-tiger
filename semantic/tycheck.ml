@@ -158,20 +158,24 @@ let rec type_expand tenv (left_id , ty) pos =
 let rec tycheck tenv ctx exp =
   match exp with
   | IntExp _ -> IntTy
-  | NilExp _ -> RecTy ([] , ref())
+  | NilExp _ -> NilTy
   | StrExp _ -> StrTy
   | VarExp {var;_} -> typeof_var ctx var
-  | OpExp { l; r; _ } ->
-      let _ = type_shouldbe tenv ctx l IntTy in
-      let _ = type_shouldbe tenv ctx r IntTy in
-      IntTy
-      (* let t1 = tycheck tenv ctx l in
-      let t2 = tycheck tenv ctx r in (
-        match (t1 , t2) with
-        | (IntTy , IntTy) -> IntTy
-        | (IntTy , t) -> type_mismatch pos IntTy t
-        | (t, _) -> type_mismatch pos IntTy t
-      ) *)
+  | OpExp { op; l; r; _ } -> (
+    match op with
+    (* 数値演算 *)
+    | PlusOp | MinusOp | TimesOp | DivOp
+    | LtOp | GtOp | LeqOp | GeqOp
+    | AndOp | OrOp   -> 
+        let _ = type_shouldbe tenv ctx l IntTy in
+        let _ = type_shouldbe tenv ctx r IntTy in
+        IntTy
+    (* 等価比較 *)
+    | EqOp | NeqOp ->
+        let t = tycheck tenv ctx l in
+        let _ = type_shouldbe tenv ctx r t in
+        IntTy
+  )
   | SeqExp {l; r} ->
       let _ = tycheck tenv ctx l in
       let tr = tycheck tenv ctx r in
@@ -296,8 +300,9 @@ let rec tycheck tenv ctx exp =
 
 and type_shouldbe tenv ctx e expected : ty =
   let t = tycheck tenv ctx e in
-  if t == expected then t
+  if type_match t expected then t
   else type_mismatch (exp_pos e) expected t
+
 
 
 
