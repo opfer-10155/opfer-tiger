@@ -3,25 +3,33 @@ open Symbol
 
 (* 左辺値 *)
 type variable =
+  (* 変数 *)
   | SimpleVar    of { id:symbol ; pos:pos }
+  (* レコードメンバ *)
   | FieldVar     of { parent:variable; id:symbol; pos:pos }
+  (* 配列参照 *)
   | SubscriptVar of { var:variable; index:exp; pos: pos}
 [@@deriving show, eq]
 
 (* 二項演算 *)
 and bin_op =
+  (* 算術演算 *)
   | PlusOp
   | MinusOp
   | TimesOp
   | DivOp
+
+  (* 比較演算 *)
   | LtOp
   | GtOp
   | LeqOp
   | GeqOp
-  | AndOp
-  | OrOp
   | EqOp
   | NeqOp
+
+  (* 論理演算 *)
+  | AndOp
+  | OrOp
 [@@deriving show, eq]
 
 (* 引数パラメタ, レコードメンバー修飾子 *)
@@ -44,6 +52,7 @@ and dec =
 and ty =
   | RecordTy of {fields:param list; pos:pos}
   | ArrayTy  of {ty:ty; pos:pos}
+  (* 型名 *)
   | NameTy   of {id: symbol; pos:pos}
 [@@deriving show, eq]
 
@@ -67,6 +76,7 @@ and exp =
 [@@deriving show, eq]
 
 
+(* expからposを抽出する *)
 let rec exp_pos e =
   match e with
   | NilExp    {pos} -> pos
@@ -86,27 +96,10 @@ let rec exp_pos e =
   | RecordExp {pos;_} -> pos
 
 
-(* type exp_info = {
-  exp : exp ;
-  pos : position
-}
-
-type var_info = {
-  var : variable ;
-  pos : position
-}
-
-type dec_info = {
-  dec : dec ;
-  pos : position
-}
-
-type ty_info = {
-  ty : ty;
-  pos : position
-} *)
-
-(* name : type *)
-(* and param = string * string * position *)
-
+(* variable値からidを抽出 *)
+let rec var_toSymbol var =
+  match var with
+  | SimpleVar {id; _}
+  | FieldVar  {id; _}     -> id
+  | SubscriptVar {var; _} -> var_toSymbol var
 
