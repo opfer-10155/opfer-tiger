@@ -27,10 +27,10 @@
 %token UMINUS     // unary ops
 %token AND        // and
 
+%left SEMICOLON
 %nonassoc COLONEQ
 %nonassoc DO THEN
 %nonassoc ELSE OF
-%left SEMICOLON
 %left LOR LAND
 %nonassoc EQEQ NEQ
 %nonassoc GEQ LEQ LT GT
@@ -48,35 +48,35 @@ program:
 // 式
 exp:
   | v=value                                           { v }
-  | v=left_value                                      { VarExp { var=v; pos=to_pos($startpos) } }
+  | v=left_value                                      { VarExp { var=v; pos= $loc } }
 
   // 括弧で閉じる
   | LPAREN e=exp RPAREN                               { e }
 
   // 関数適用
-  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=toSymbol s; args=es; pos=to_pos($startpos) } }
+  | s=ID LPAREN es=separated_list(COMMA, exp) RPAREN  { CallExp { id=toSymbol s; args=es; pos= $loc } }
 
   // 二項演算
   | e=bin_op_exp                                      { e }
 
   // 代入 v := e
-  | v = left_value COLONEQ e = exp                    { AssignExp { var = v; e = e; pos = to_pos($startpos)} }
+  | v = left_value COLONEQ e = exp                    { AssignExp { var = v; e = e; pos =  $loc} }
 
   // 単項マイナス
-  | MINUS e=exp %prec UMINUS                          { OpExp { op=MinusOp; l=IntExp {i=0; pos=dummy_pos}; r=e; pos=to_pos($startpos)} }
+  | MINUS e=exp %prec UMINUS                          { OpExp { op=MinusOp; l=IntExp {i=0; pos=dummy_pos}; r=e; pos= $loc} }
 
   // if then else
-  | IF e1=exp THEN e2=exp ELSE e3=exp                 { IfExp { c=e1; t1=e2; t2=(Some e3); pos=to_pos($startpos)} }
+  | IF e1=exp THEN e2=exp ELSE e3=exp                 { IfExp { c=e1; t1=e2; t2=(Some e3); pos= $loc} }
   // if then
-  | IF e1=exp THEN e2=exp                             { IfExp { c=e1; t1=e2; t2=None; pos=to_pos($startpos)} }
+  | IF e1=exp THEN e2=exp                             { IfExp { c=e1; t1=e2; t2=None; pos= $loc} }
 
   // while condition do ...
-  | WHILE e1=exp DO e2=exp                            { WhileExp { c=e1; body=e2; pos=to_pos($startpos) } }
+  | WHILE e1=exp DO e2=exp                            { WhileExp { c=e1; body=e2; pos= $loc } }
 
   // forループ for i = e1 to e2 do exp
-  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=toSymbol s; low=e1; high=e2; body=body; pos=to_pos($startpos) } }
+  | FOR s=ID EQ e1=exp TO e2=exp DO body=exp          { ForExp { id=toSymbol s; low=e1; high=e2; body=body; pos= $loc } }
 
-  | BREAK                                             { BreakExp { pos=to_pos($startpos) } }
+  | BREAK                                             { BreakExp { pos= $loc } }
 
   // シークエンス
   | e1=exp SEMICOLON e2=exp                           { SeqExp { l=e1; r=e2; } }// a = 10; a + 1
@@ -95,7 +95,7 @@ exp:
   | LET ds=nonempty_list(decs) IN e=exp END
   {
     List.fold_right
-      (fun dec e -> LetExp{decs=dec; body=e; pos=to_pos($startpos)})
+      (fun dec e -> LetExp{decs=dec; body=e; pos= $loc})
       ds
       e
   }
@@ -105,21 +105,21 @@ exp:
 
 value:
   // 数値
-  | i=INT                                             { IntExp { i=i; pos=to_pos($startpos) }  }
+  | i=INT                                             { IntExp { i=i; pos= $loc }  }
   // 文字列値
-  | s=STR                                             { StrExp { s=s; pos=to_pos($startpos) } }
-  | NIL                                               { NilExp { pos=to_pos($startpos) } }
+  | s=STR                                             { StrExp { s=s; pos= $loc } }
+  | NIL                                               { NilExp { pos= $loc } }
   // 配列初期化  array int[8] of 0
-  | ARRAY ty=type_exp LBRACKET len=exp RBRACKET OF e=exp    { ArrayExp { ty=ty; len=len; init=e; pos=to_pos($startpos) } }
+  | ARRAY ty=type_exp LBRACKET len=exp RBRACKET OF e=exp    { ArrayExp { ty=ty; len=len; init=e; pos= $loc } }
   // レコード初期化 {x=10}
-  | LBRACE fs=fields RBRACE                           { RecordExp { fields=fs; pos=to_pos($startpos) } }
+  | LBRACE fs=fields RBRACE                           { RecordExp { fields=fs; pos= $loc } }
 
 // フィールド
 fields:
   | fs=separated_list(COMMA, field) { fs }
 
 field:
-  | s=ID EQ e=exp { Field { id=toSymbol s ; e=e; pos=to_pos($startpos) } }
+  | s=ID EQ e=exp { Field { id=toSymbol s ; e=e; pos= $loc } }
 
 // 宣言
 decs:
@@ -133,32 +133,32 @@ decs:
 
 // 変数宣言
 var_dec:
-  | VAR s=ID EQ e=exp                       { VarDec { id=toSymbol s; ty=None; e=e; pos=to_pos($startpos) } }
-  | VAR s=ID COLON ty=type_exp EQ e=exp     { VarDec { id=toSymbol s; ty=(Some ty); e=e; pos=to_pos($startpos) } }
+  | VAR s=ID EQ e=exp                       { VarDec { id=toSymbol s; ty=None; e=e; pos= $loc } }
+  | VAR s=ID COLON ty=type_exp EQ e=exp     { VarDec { id=toSymbol s; ty=(Some ty); e=e; pos= $loc } }
 
 // 関数宣言  返値型ありor返値型なし
 func_dec:
-  | FUNCTION name=ID LPAREN params=type_fields RPAREN EQ body=exp                     { FunDec {id=toSymbol name; params=params; rty=None;     body=body; pos=to_pos($startpos)} }
-  | FUNCTION name=ID LPAREN params=type_fields RPAREN COLON ty=type_exp EQ body=exp   { FunDec {id=toSymbol name; params=params; rty=Some ty;  body=body; pos=to_pos($startpos)} }
+  | FUNCTION name=ID LPAREN params=type_fields RPAREN EQ body=exp                     { FunDec {id=toSymbol name; params=params; rty=None;     body=body; pos= $loc} }
+  | FUNCTION name=ID LPAREN params=type_fields RPAREN COLON ty=type_exp EQ body=exp   { FunDec {id=toSymbol name; params=params; rty=Some ty;  body=body; pos= $loc} }
 
 // 左辺値もしくは変数参照
 left_value:
   // x
-  | s=ID                                  { SimpleVar    { id=toSymbol s; pos=to_pos($startpos) } }
+  | s=ID                                  { SimpleVar    { id=toSymbol s; pos= $loc } }
   // arr[1]
-  | v=left_value DOT s=ID                 { FieldVar     { parent=v; id=toSymbol s; pos=to_pos($startpos) } }
+  | v=left_value DOT s=ID                 { FieldVar     { parent=v; id=toSymbol s; pos= $loc } }
   // record.member
-  | v=left_value LBRACKET e=exp RBRACKET  { SubscriptVar { var=v; index=e; pos=to_pos($startpos) } }
+  | v=left_value LBRACKET e=exp RBRACKET  { SubscriptVar { var=v; index=e; pos= $loc } }
 
 
 // 型表現
 type_exp:
   // 型名
-  | t=ID                                      { NameTy {id=toSymbol t; pos=to_pos($startpos)} }
+  | t=ID                                      { NameTy {id=toSymbol t; pos= $loc} }
   // record型 record {x: int}
-  | LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos=to_pos($startpos) } }
+  | LBRACE params=type_fields RBRACE   { RecordTy { fields=params; pos= $loc } }
   // 配列型 [int]
-  | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos=to_pos($startpos) }}
+  | LBRACKET ty=type_exp RBRACKET             { ArrayTy  { ty=ty; pos= $loc }}
 
 // 型フィールド
 type_fields:
@@ -166,28 +166,28 @@ type_fields:
 
 // 属性
 type_field:
-  | s=ID COLON ty=type_exp { Param { id=toSymbol s; ty=ty; pos=to_pos($startpos) } }
+  | s=ID COLON ty=type_exp { Param { id=toSymbol s; ty=ty; pos= $loc } }
 
 // 型の文法
 // 型宣言
 type_dec:
-  | TYPE s=ID EQ ty=type_exp { TypeDec { id=toSymbol s; ty=ty; pos=to_pos($startpos)} }
+  | TYPE s=ID EQ ty=type_exp { TypeDec { id=toSymbol s; ty=ty; pos= $loc} }
 
 
 // 二項演算
 bin_op_exp:
-  | e1=exp PLUS   e2=exp {OpExp {op=PlusOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp MINUS  e2=exp {OpExp {op=MinusOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp TIMES  e2=exp {OpExp {op=TimesOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp DIVIDE e2=exp {OpExp {op=DivOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp LT     e2=exp {OpExp {op=LtOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp GT     e2=exp {OpExp {op=GtOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp LEQ    e2=exp {OpExp {op=LeqOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp GEQ    e2=exp {OpExp {op=GeqOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp LAND   e2=exp {OpExp {op=AndOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp LOR    e2=exp {OpExp {op=OrOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp EQEQ   e2=exp {OpExp {op=EqOp; l=e1; r=e2; pos=to_pos($startpos)} }
-  | e1=exp NEQ    e2=exp {OpExp {op=NeqOp; l=e1; r=e2; pos=to_pos($startpos)} }
+  | e1=exp PLUS   e2=exp {OpExp {op=PlusOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp MINUS  e2=exp {OpExp {op=MinusOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp TIMES  e2=exp {OpExp {op=TimesOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp DIVIDE e2=exp {OpExp {op=DivOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp LT     e2=exp {OpExp {op=LtOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp GT     e2=exp {OpExp {op=GtOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp LEQ    e2=exp {OpExp {op=LeqOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp GEQ    e2=exp {OpExp {op=GeqOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp LAND   e2=exp {OpExp {op=AndOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp LOR    e2=exp {OpExp {op=OrOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp EQEQ   e2=exp {OpExp {op=EqOp; l=e1; r=e2; pos= $loc} }
+  | e1=exp NEQ    e2=exp {OpExp {op=NeqOp; l=e1; r=e2; pos= $loc} }
 
 // bin_op:
 //   | PLUS   {}
