@@ -1,48 +1,6 @@
 open Ast
 open SymTable
-open Position
 open Type
-
-(* exception TypeError of pos * string *)
-exception TypeMismatch      of pos * ty * ty
-exception Undefined         of pos * string * Symbol.symbol
-exception Misdifined        of pos * string * Symbol.symbol (* typeがvarとして定義されていたときに、検出できるのか? *)
-exception NotFunction       of pos * Symbol.symbol * ty
-exception NotRecord         of pos * variable * ty
-exception NotArray          of pos * variable * ty
-exception NotRecordArgument of pos * variable * Symbol.symbol
-exception CirculationFound  of pos * Symbol.symbol
-
-(* 例外 *)
-let type_mismatch pos expected found =
-  raise (TypeMismatch(pos , expected , found))
-  (* Error.error loc "type mismatch: expected %s, but found %s" (T.string_of_ty expected) (T.string_of_ty found) *)
-
-let undefined pos kind id =
-  raise (Undefined(pos, kind, id))
-
-let not_record_argument pos parent id =
-  raise (NotRecordArgument(pos , parent , id))
-
-let not_record pos parent ty =
-  raise (NotRecord (pos, parent, ty))
-
-let not_array pos var ty =
-  raise (NotArray(pos, var, ty ))
-
-let not_a_function pos id ty =
-  raise (NotFunction(pos , id , ty))
-
-let circulation_found pos id =
-  raise (CirculationFound (pos , id))
-(* let misdefined loc kind id =
-  Error.error loc "%s is not a %s" (S.name id) kind
-
-let cannot_be_nil loc id =
-  Error.error loc "cannot initialize untyped variable %s with nil" (S.name id)
-
-let break_is_not_in_loop loc =
-  Error.error loc "breal exp isn't in loop exp" *)
 
 (* 型名 -> 型 *)
 let rec actual_ty tenv t =
@@ -50,7 +8,7 @@ let rec actual_ty tenv t =
   | NameTy {id; pos} -> (
       match lookup id tenv with
         | Some ty -> ty
-        | None -> undefined pos "type" id
+        | None -> Error.undefined pos "type" id
   )
   | ArrayTy {ty; _} -> (
       let t = actual_ty tenv ty in
@@ -63,13 +21,14 @@ let rec actual_ty tenv t =
       )
   )
 
+
 (* 左辺値もしくは変数が指す型 *)
 let rec typeof_var ctx var =
   match var with
   | SimpleVar {id; pos} -> (
       match lookup id ctx with
       | Some ty -> ty
-      | None -> undefined pos "variable" id
+      | None -> Error.undefined pos "variable" id
   )
   (*
   * 1. parentがRecordである
@@ -80,19 +39,21 @@ let rec typeof_var ctx var =
       | RecTy (fields , _)  ->
           let (_ , t) =(
             match List.find_opt
-              (fun (fid , _) -> fid == id)
+              (fun (fid , _) -> Symbol.equal_symbol fid id)
               fields
             with
             | Some field -> field
-            | None -> not_record_argument pos parent id
+            | None ->
+                Format.printf "type: %s \n" (show_ty (typeof_var ctx parent));
+                Error.not_record_argument pos parent id
           ) in
           t
-      | badty -> not_record pos parent badty
+      | badty -> Error.not_record pos parent badty
   )
   | SubscriptVar {var; pos; _} -> (
       match typeof_var ctx var with
       | ArrTy (ty , _) -> ty
-      | badty -> not_array pos var badty
+      | badty -> Error.not_array pos var badty
   )
 
 (* 関数の基本情報 *)
@@ -106,53 +67,98 @@ let func_header tenv (FunDec { id; params; rty; body; _ }) =
   let ac_params (Param {id; ty; _}) = (id , actual_ty tenv ty) in
   (id, List.map ac_params params, ac_rty , body)
 
-(* 型定義のヘッダ情報 *)
-let tydec_header (TypeDec {id; ty; _}) =
-  (id , TmpTy ty)
 
 (* 型定義の循環を調べる *)
-let rec find_circulation left_id vty =
+(* let rec find_circulation left_id vty =
   match vty with
-  | TmpTy (NameTy {id; _}) -> left_id == id
+  | TmpTy (NameTy {id; _}) -> Symbol.equal_symbol left_id id
   | TmpTy (ArrayTy {ty; _}) -> find_circulation left_id (TmpTy ty)
   | TmpTy (RecordTy {fields; _}) ->
       List.fold_left
         (fun flag (Param {ty;_}) -> flag || find_circulation left_id (TmpTy ty))
         false fields
   | _ -> false
-
-
-(* 仮想型を実際の型に展開 *)
-let rec type_expand tenv (left_id , ty) pos =
-  if find_circulation left_id ty
-  then circulation_found pos left_id
-  else match ty with
-  | TmpTy (NameTy {id; pos}) -> (
-      match lookup id tenv  with
-      | Some t -> type_expand tenv (left_id , t) pos
-      | None -> undefined pos "type" id
+ *)
+(* let rec parseTydec tenv left_id ty =
+  match ty with
+  | NameTy {id; pos} -> (
+      match lookup id tenv with
+      | Some (TmpTy t) ->
+          (* 未展開の型 *)
+          (* 左辺名と同じなら再帰する *)
+          (* 左辺値と違うなら次の展開を待つ *)
+          if Symbol.equal_symbol left_id id
+          then NameTy(id , tenv)
+          else (TmpTy t , false)
+      | Some t -> t
+      | None -> Error.undefined pos "type" id
   )
-  | TmpTy (ArrayTy {ty; pos}) -> (
-      ArrTy ((type_expand tenv (left_id , TmpTy ty) pos) , ref ())
-  )
-  | TmpTy (RecordTy {fields; pos}) -> (
+  (* 内部を展開する *)
+  | ArrayTy {ty; _} -> ArrTy ((parseTydec tenv (left_id , ty)), ref())
+  | RecordTy {fields; _} -> (
       RecTy (
-        List.map
-          (fun (Param {id; ty; _}) ->
-            (id , type_expand tenv (left_id , TmpTy ty) pos))
-          fields,
-        ref()
+        List.map (
+          fun (Param {id; ty; _}) ->
+            (id , parseTydec tenv (left_id , ty))) fields,
+            ref ()
       )
-  )
-  | ArrTy (ty , _) -> ArrTy (type_expand tenv (left_id , ty) pos , ref())
-  | RecTy (fields, _) ->
-      RecTy (
-        List.map
-          (fun (id , ty) -> (id , type_expand tenv (left_id , ty) pos))
-          fields,
-        ref()
+  ) *)
+
+(* 型宣言を展開してヘッダ情報を返す *)
+let rec parseTydec tenv (TypeDec {id; ty; pos}) =
+  let rec parseTy ty = 
+    match ty with
+      | NameTy {id; _} -> (
+          match lookup id tenv with
+          | Some t -> t
+          | None -> RecursiveTy (id , ref None)
       )
-  | _ -> ty
+      | ArrayTy {ty; _} -> ArrTy ((parseTy ty), ref())
+      | RecordTy {fields; _} ->
+          RecTy (
+            List.map
+              (fun (Param {id; ty; _}) -> (id , parseTy ty))
+              fields,
+            ref ()
+          )
+  in
+  (id , parseTy ty, pos)
+
+(*
+* !! 副作用を起こす
+* tyの中のNameTyに中身(参照先)を与える
+*)
+let rec parseNameTy tenv ty pos =
+  let rec solve subty =
+    match subty with
+    | RecursiveTy (id , t_ref) -> (
+        if !t_ref == None then
+          match lookup id tenv with
+            | Some t -> t_ref := Some t
+            | None -> Error.undefined pos "type" id
+        else ()
+    )
+    | ArrTy (ty , _) -> solve ty
+    | RecTy (fields , _) ->
+        List.fold_left
+          (fun () (_ , t) -> solve t)
+          () fields
+    | _ -> ()
+  in
+  solve ty
+
+(*
+* let で渡された1つ以上の型定義を展開して、型環境tenvに挿入して返す
+* TODO: 循環の検出をする気がありません
+*)
+let rec parseTydecs tenv tydecs =
+  let headers = List.map (parseTydec tenv) tydecs in
+  let vtenv = List.fold_left (fun env (id , ty, _) -> enter id ty env) tenv headers in
+  let _ = List.map (
+    fun (_ , ty, pos) -> parseNameTy vtenv ty pos
+  ) headers in
+  let rtenv = List.fold_left (fun env (id , ty, _) -> enter id ty env) tenv headers in
+  rtenv
 
 
 let rec tycheck tenv ctx exp =
@@ -249,10 +255,10 @@ let rec tycheck tenv ctx exp =
             (List.combine t_args args)
         in
         rty
-      | Some badty -> not_a_function pos id badty
-      | None -> undefined pos "function" id
+      | Some badty -> Error.not_a_function pos id badty
+      | None -> Error.undefined pos "function" id
   )
-  | LetExp { decs; body; pos; } -> (
+  | LetExp { decs; body; _; } -> (
       match decs with
       | VarDec { id; ty; e; _ } -> (
           match ty with
@@ -291,19 +297,18 @@ let rec tycheck tenv ctx exp =
           let _ = List.map (fun (_, t_args, rty , body) -> func_check t_args rty body) headers in
           tycheck tenv nctx body
       | TypeDecs tydecs ->
-          let headers = List.map tydec_header tydecs in
+          (* let headers = List.map tydec_header tydecs in
           let vtenv = List.fold_left (fun env (id , ty) -> enter id ty env) tenv headers in
-          let realtypes = List.map (fun (id , ty) -> (id , type_expand vtenv (id , ty) pos)) headers in
-          let rtenv = List.fold_left (fun env (id , ty) -> enter id ty env) tenv realtypes in
+          let realtypes = List.map (fun (id , ty) -> (id , type_expand vtenv (id , ty) pos)) headers in *)
+          let rtenv = parseTydecs tenv tydecs in
           tycheck rtenv ctx body
   )
 
 and type_shouldbe tenv ctx e expected : ty =
   let t = tycheck tenv ctx e in
   if type_match t expected then t
-  else type_mismatch (exp_pos e) expected t
-
-
+  else
+    Error.type_mismatch (exp_pos e) e expected t
 
 
 (* intは型環境に入っているものなのか？ int -> Int と x -> Int は別物のような気がする *)
@@ -332,4 +337,38 @@ tenv: [int: Int , b:Name(a) , a:Name(int) , c:Name(b)] header:[(b, Name(int)) , 
 *)
 
 
+
+(* 仮想型を実際の型に展開 *)
+(* let rec type_expand tenv (left_id , ty) pos =
+  (* if find_circulation left_id ty
+  then Error.circulation_found pos left_id *)
+  (* else  *)
+  match ty with
+  | TmpTy (NameTy {id; pos}) -> (
+      match lookup id tenv  with
+      | Some (TmpTy t) -> 
+      | Some t -> type_expand tenv (left_id , t) pos
+      | None -> Error.undefined pos "type" id
+  )
+  | TmpTy (ArrayTy {ty; pos}) -> (
+      ArrTy ((type_expand tenv (left_id , TmpTy ty) pos) , ref ())
+  )
+  | TmpTy (RecordTy {fields; pos}) -> (
+      RecTy (
+        List.map
+          (fun (Param {id; ty; _}) ->
+            (id , type_expand tenv (left_id , TmpTy ty) pos))
+          fields,
+        ref()
+      )
+  )
+  | ArrTy (ty , _) -> ArrTy (type_expand tenv (left_id , ty) pos , ref())
+  | RecTy (fields, _) ->
+      RecTy (
+        List.map
+          (fun (id , ty) -> (id , type_expand tenv (left_id , ty) pos))
+          fields,
+        ref()
+      )
+  | _ -> ty *)
 
