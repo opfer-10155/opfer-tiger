@@ -14,10 +14,6 @@ and ty =
     | ArrTy of ty          * unit ref
     | RecTy of fields list * unit ref
     | FuncTy of ty list * ty
-    (*
-    * 一時的な型、型の相互再帰の検査に利用する
-    *)
-    | TmpTy of Ast.ty
     | RecursiveTy of symbol * (ty option) ref
 [@@deriving show, eq]
 
